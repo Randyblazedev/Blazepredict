@@ -318,7 +318,13 @@
         });
         const data = await res.json();
         removeTyping();
-        addMsg(data.reply || 'No response received.', 'bot');
+        let reply = (data.reply || 'No response received.')
+          .replace(/[🎉🔥💥⚡💪🔴🔵⚽️🏆✅❌⭐️🤯😅😎👏🙌💯]/g,'')
+          .replace(/!{2,}/g,'!')
+          .replace(/BOOM|GET READY|HERE WE GO|LET'S GO/gi,'')
+          .trim();
+        if (reply.startsWith('!')) reply = reply.substring(1).trim();
+        addMsg(reply, 'bot');
       } catch (e) {
         removeTyping();
         addMsg('AI is offline. Try again in a moment!', 'bot');
