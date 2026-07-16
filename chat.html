@@ -36,6 +36,11 @@
       border: 1px solid #e2e8f0;
     }
     .msg.typing { background: transparent; box-shadow: none; border: none; color: #94a3b8; font-style: italic; font-size: .85rem; }
+    .msg.context {
+      background: #f0f9ff; border: 1px solid #bae6fd; color: #0c4a6e;
+      align-self: center; font-size: .75rem; padding: 6px 12px; border-radius: 8px;
+      max-width: 90%; text-align: center;
+    }
     .chat-foot { display: flex; align-items: center; gap: 8px; padding: 14px 16px; border-top: 1px solid #e2e8f0; background: #fff; }
     .chat-foot input {
       flex: 1; padding: 10px 16px; border: 1px solid #e2e8f0; border-radius: 24px;
@@ -55,6 +60,9 @@
     .backdrop { background: linear-gradient(135deg, #0f172a, #1e293b); padding: 60px 0 64px; text-align: center; color: #fff; }
     .backdrop h2 { font-weight: 700; margin-bottom: 6px; }
     .backdrop p { opacity: .7; margin: 0; font-size: .95rem; }
+    .match-suggest { display: flex; gap: 8px; flex-wrap: wrap; padding: 8px 16px 12px; background: #f8fafc; border-top: 1px solid #e2e8f0; }
+    .match-suggest button { background: #f1f5f9; border: 1px solid #e2e8f0; border-radius: 20px; padding: 4px 14px; font-size: .78rem; cursor: pointer; transition: all .15s; color: #475569; }
+    .match-suggest button:hover { background: #FF5733; color: #fff; border-color: #FF5733; }
     footer { background: #0f172a; color: #94a3b8; padding: 24px 0; text-align: center; font-size: .85rem; margin-top: 48px; }
     footer a { color: #FF5733; text-decoration: none; }
   </style>
@@ -76,15 +84,17 @@
   <div class="chat-page">
     <div class="chat-card">
       <div class="chat-head">
-        <h5>🔥 Blaze AI</h5>
-        <p>Powered by OpenRouter AI</p>
+        <h5>🔥 Blaze Predict</h5>
+        <p>Live match data + AI predictions</p>
       </div>
       <div id="chatBox" class="chat-box">
         <div class="empty-chat" id="emptyState">
           <div class="icon">⚽</div>
-          <p>Ask me about football predictions!</p>
+          <p>Ask me about any match or team!</p>
+          <small style="color:#94a3b8">e.g. "predict Arsenal vs Chelsea"</small>
         </div>
       </div>
+      <div id="suggestions" class="match-suggest"></div>
       <div class="chat-foot">
         <input type="text" id="chatInput" placeholder="Ask about a match or team..." onkeydown="if(event.key==='Enter')sendMsg()">
         <button id="sendBtn" onclick="sendMsg()">➤</button>
@@ -98,6 +108,113 @@
 
   <script>
     const AI_URL = 'https://keith-switching-meaning-calculate.trycloudflare.com/api/tutor';
+    const FOOTBALL_TOKEN = 'c1a97fafab9e4a8cb65985e2685a64fa';
+    const today = new Date().toISOString().split('T')[0];
+
+    // Known team name -> search keywords
+    const TEAM_ALIASES = {
+      'manchester united': 'Manchester United',
+      'man utd': 'Manchester United',
+      'man united': 'Manchester United',
+      'man city': 'Manchester City',
+      'mancity': 'Manchester City',
+      'arsenal': 'Arsenal',
+      'chelsea': 'Chelsea',
+      'liverpool': 'Liverpool',
+      'tottenham': 'Tottenham',
+      'spurs': 'Tottenham',
+      'newcastle': 'Newcastle',
+      'aston villa': 'Aston Villa',
+      'west ham': 'West Ham',
+      'brighton': 'Brighton',
+      'wolves': 'Wolverhampton',
+      'fulham': 'Fulham',
+      'brentford': 'Brentford',
+      'crystal palace': 'Crystal Palace',
+      'everton': 'Everton',
+      'nottingham': 'Nottingham',
+      'leicester': 'Leicester',
+      'leeds': 'Leeds',
+      'southampton': 'Southampton',
+      'real madrid': 'Real Madrid',
+      'barcelona': 'Barcelona',
+      'atletico': 'Atletico Madrid',
+      'bayern': 'Bayern Munich',
+      'dortmund': 'Borussia Dortmund',
+      'juventus': 'Juventus',
+      'milan': 'AC Milan',
+      'inter': 'Inter Milan',
+      'psg': 'Paris Saint-Germain',
+      'napoli': 'Napoli',
+      'ajax': 'Ajax',
+      'porto': 'Porto',
+      'benfica': 'Benfica',
+    };
+
+    const COMPETITION_IDS = { 'PL': 2021, 'BL1': 2002, 'SA': 2019, 'PD': 2014, 'FL1': 2015, 'CL': 2001, 'ELC': 2016 };
+
+    // Fetch team recent form
+    async function fetchTeamForm(teamName) {
+      for (const compId of Object.values(COMPETITION_IDS)) {
+        try {
+          const r = await fetch(`https://api.football-data.org/v4/competitions/${compId}/teams`, {
+            headers: { 'X-Auth-Token': FOOTBALL_TOKEN }
+          });
+          if (!r.ok) continue;
+          const data = await r.json();
+          const team = (data.teams || []).find(t => t.name.toLowerCase().includes(teamName.toLowerCase()));
+          if (team) {
+            const matchesR = await fetch(`https://api.football-data.org/v4/teams/${team.id}/matches?status=FINISHED&limit=5`, {
+              headers: { 'X-Auth-Token': FOOTBALL_TOKEN }
+            });
+            if (!matchesR.ok) return { name: team.name, form: 'No recent data' };
+            const matchData = await matchesR.json();
+            const recent = (matchData.matches || []).map(m => {
+              const won = m.score.winner === 'HOME_TEAM' ? m.homeTeam.id === team.id : m.score.winner === 'AWAY_TEAM' ? m.awayTeam.id === team.id : null;
+              return { opponent: m.homeTeam.id === team.id ? m.awayTeam.name : m.homeTeam.name, result: won === null ? 'D' : won ? 'W' : 'L', score: (m.score.fullTime.home || 0) + '-' + (m.score.fullTime.away || 0) };
+            });
+            return { name: team.name, id: team.id, form: recent.length ? recent : 'No recent matches', crest: team.crest };
+          }
+        } catch(e) { continue; }
+      }
+      return null;
+    }
+
+    // Fetch today's matches
+    async function fetchTodaysMatches() {
+      try {
+        const r = await fetch(`https://api.football-data.org/v4/matches?dateFrom=${today}&dateTo=${today}`, {
+          headers: { 'X-Auth-Token': FOOTBALL_TOKEN }
+        });
+        if (!r.ok) return [];
+        const data = await r.json();
+        return (data.matches || []).map(m => ({
+          home: m.homeTeam.name,
+          away: m.awayTeam.name,
+          comp: m.competition?.name || '',
+          homeId: m.homeTeam.id,
+          awayId: m.awayTeam.id
+        }));
+      } catch(e) { return []; }
+    }
+
+    // Show quick match suggestions
+    async function loadSuggestions() {
+      const matches = await fetchTodaysMatches();
+      const el = document.getElementById('suggestions');
+      if (matches.length === 0) {
+        el.innerHTML = '<span style="font-size:.7rem;color:#94a3b8;padding:4px 0">⚽ ask about any team or match</span>';
+        return;
+      }
+      el.innerHTML = matches.slice(0, 4).map(m =>
+        `<button onclick="quickAsk('predict ${m.home} vs ${m.away}')">${m.home} vs ${m.away}</button>`
+      ).join('');
+    }
+
+    function quickAsk(msg) {
+      document.getElementById('chatInput').value = msg;
+      sendMsg();
+    }
 
     function addMsg(text, type) {
       const box = document.getElementById('chatBox');
@@ -116,6 +233,15 @@
       if (t) t.remove();
     }
 
+    function detectTeams(text) {
+      const lower = text.toLowerCase();
+      const found = [];
+      for (const [alias, name] of Object.entries(TEAM_ALIASES)) {
+        if (lower.includes(alias)) found.push(name);
+      }
+      return [...new Set(found)];
+    }
+
     async function sendMsg() {
       const input = document.getElementById('chatInput');
       const btn = document.getElementById('sendBtn');
@@ -126,13 +252,69 @@
       input.value = '';
       btn.disabled = true;
 
+      // Detect if this is a match/football question
+      const isMatchQuery = msg.toLowerCase().includes('predict') || msg.toLowerCase().includes('vs') ||
+        msg.toLowerCase().includes('win') || msg.toLowerCase().includes('who will') ||
+        detectTeams(msg).length > 0;
+
+      let matchContext = '';
+
+      if (isMatchQuery) {
+        const typingEl = addMsg('🔍 checking match data...', 'typing');
+
+        // Find mentioned teams
+        const teams = detectTeams(msg);
+        const teamData = [];
+
+        // Fetch team form for each detected team
+        for (const team of teams.slice(0, 2)) {
+          const data = await fetchTeamForm(team);
+          if (data && data.form !== 'No recent data' && Array.isArray(data.form)) {
+            teamData.push(data);
+          }
+        }
+
+        // Also get today's matches
+        const todaysMatches = await fetchTodaysMatches();
+
+        // Build context string
+        if (teamData.length > 0) {
+          matchContext = 'RECENT FORM DATA:\n';
+          for (const td of teamData) {
+            matchContext += `\n${td.name}:\n`;
+            if (Array.isArray(td.form)) {
+              td.form.forEach(m => { matchContext += `  vs ${m.opponent}: ${m.result} (${m.score})\n`; });
+            }
+          }
+        }
+
+        if (todaysMatches.length > 0) {
+          matchContext += '\nTODAYS MATCHES:\n';
+          todaysMatches.forEach(m => { matchContext += `  ${m.home} vs ${m.away} (${m.comp})\n`; });
+        }
+
+        removeTyping();
+
+        if (matchContext) {
+          addMsg('⚡ got live data — analyzing...', 'context');
+          // Small delay so user can see the context message
+          await new Promise(r => setTimeout(r, 300));
+        }
+      }
+
       const typingEl = addMsg('thinking...', 'typing');
 
       try {
+        const body = {
+          message: matchContext ? msg + '\n\n' + matchContext : msg,
+          username: 'BlazepredictUser',
+          mode: 'football'
+        };
+
         const res = await fetch(AI_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message: msg, username: 'BlazepredictUser', mode: 'football' })
+          body: JSON.stringify(body)
         });
         const data = await res.json();
         removeTyping();
@@ -145,6 +327,9 @@
       btn.disabled = false;
       document.getElementById('chatInput').focus();
     }
+
+    // Load suggestions on page load
+    loadSuggestions();
   </script>
 </body>
 </html>
