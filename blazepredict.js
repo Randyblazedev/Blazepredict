@@ -1,4 +1,4 @@
-const API_TOKEN = "805e2ea33ede4dbe8542234fe9cd6faf";
+const API_TOKEN = "c1a97fafab9e4a8cb65985e2685a64fa";
 const today = new Date().toISOString().split('T')[0];
 
 // Handle zero-score case so we don't get NaN
