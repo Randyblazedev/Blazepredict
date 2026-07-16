@@ -5,88 +5,145 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BlazePredict Chat</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Poppins', sans-serif; background: #f0f2f5; }
-    .chat-page { max-width: 600px; margin: 40px auto; padding: 0 16px; }
-    .chat-card { background: #fff; border-radius: 16px; box-shadow: 0 4px 24px rgba(0,0,0,.1); overflow: hidden; }
-    .chat-header { background: linear-gradient(135deg, #FF5733, #e04a2b); color: #fff; padding: 20px 24px; text-align: center; }
-    .chat-header h5 { margin: 0; font-weight: 700; }
-    .chat-header p { margin: 4px 0 0; font-size: .85rem; opacity: .85; }
-    .chat-box { padding: 16px; height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; background: #fafafa; }
-    .chat-msg { max-width: 80%; padding: 10px 14px; border-radius: 14px; font-size: .9rem; line-height: 1.4; word-wrap: break-word; }
-    .chat-msg.sent { background: #dcf8c6; align-self: flex-end; border-bottom-right-radius: 4px; }
-    .chat-msg.received { background: #fff; align-self: flex-start; border-bottom-left-radius: 4px; box-shadow: 0 1px 2px rgba(0,0,0,.05); }
-    .chat-footer { display: flex; align-items: center; gap: 8px; padding: 12px 16px; border-top: 1px solid #e2e8f0; background: #fff; }
-    .chat-footer input { flex: 1; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 24px; outline: none; font-size: .9rem; }
-    .chat-footer input:focus { border-color: #FF5733; }
-    .chat-footer button { background: #FF5733; color: #fff; border: none; border-radius: 50%; width: 42px; height: 42px; font-size: 1.1rem; cursor: pointer; transition: background .15s; }
-    .chat-footer button:hover { background: #e04a2b; }
-    .empty-chat { text-align: center; color: #94a3b8; padding: 40px 20px; font-size: .9rem; }
-    footer { background-color: #222; color: white; padding: 20px 0; text-align: center; margin-top: 40px; }
+    * { box-sizing: border-box; }
+    body { font-family: 'Poppins', sans-serif; background: #f1f5f9; color: #0f172a; }
+    .navbar { background: #0f172a !important; box-shadow: 0 2px 12px rgba(0,0,0,.15); }
+    .navbar-brand { font-weight: 700; font-size: 1.3rem; letter-spacing: -.5px; }
+    .nav-link { font-weight: 500; font-size: .9rem; }
+    .chat-page { max-width: 640px; margin: -32px auto 0; padding: 0 16px; position: relative; z-index: 2; }
+    .chat-card { background: #fff; border-radius: 16px; box-shadow: 0 8px 32px rgba(0,0,0,.12); overflow: hidden; border: 1px solid #e2e8f0; }
+    .chat-head { background: linear-gradient(135deg, #0f172a, #1e293b); color: #fff; padding: 24px; text-align: center; }
+    .chat-head h5 { font-weight: 700; margin: 0; }
+    .chat-head p { margin: 4px 0 0; font-size: .85rem; opacity: .7; }
+    .chat-box {
+      padding: 20px; height: 420px; overflow-y: auto;
+      display: flex; flex-direction: column; gap: 10px;
+      background: #fafbfc;
+    }
+    .chat-box::-webkit-scrollbar { width: 6px; }
+    .chat-box::-webkit-scrollbar-track { background: transparent; }
+    .chat-box::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    .msg { max-width: 82%; padding: 10px 16px; border-radius: 16px; font-size: .9rem; line-height: 1.5; word-wrap: break-word; white-space: pre-wrap; }
+    .msg.user {
+      background: linear-gradient(135deg, #FF5733, #e04a2b); color: #fff;
+      align-self: flex-end; border-bottom-right-radius: 4px;
+    }
+    .msg.bot {
+      background: #fff; color: #0f172a; align-self: flex-start;
+      border-bottom-left-radius: 4px; box-shadow: 0 1px 3px rgba(0,0,0,.06);
+      border: 1px solid #e2e8f0;
+    }
+    .msg.typing { background: transparent; box-shadow: none; border: none; color: #94a3b8; font-style: italic; font-size: .85rem; }
+    .chat-foot { display: flex; align-items: center; gap: 8px; padding: 14px 16px; border-top: 1px solid #e2e8f0; background: #fff; }
+    .chat-foot input {
+      flex: 1; padding: 10px 16px; border: 1px solid #e2e8f0; border-radius: 24px;
+      outline: none; font-size: .9rem; font-family: 'Poppins', sans-serif;
+      transition: border-color .15s;
+    }
+    .chat-foot input:focus { border-color: #FF5733; }
+    .chat-foot button {
+      background: #FF5733; color: #fff; border: none; border-radius: 50%;
+      width: 42px; height: 42px; font-size: 1.1rem; cursor: pointer;
+      transition: background .15s; flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    }
+    .chat-foot button:hover { background: #e04a2b; }
+    .chat-foot button:disabled { opacity: .5; cursor: not-allowed; }
+    .empty-chat { text-align: center; color: #94a3b8; padding: 60px 20px; }
+    .empty-chat .icon { font-size: 3rem; margin-bottom: 12px; }
+    .backdrop { background: linear-gradient(135deg, #0f172a, #1e293b); padding: 60px 0 64px; text-align: center; color: #fff; }
+    .backdrop h2 { font-weight: 700; margin-bottom: 6px; }
+    .backdrop p { opacity: .7; margin: 0; font-size: .95rem; }
+    footer { background: #0f172a; color: #94a3b8; padding: 24px 0; text-align: center; font-size: .85rem; margin-top: 48px; }
     footer a { color: #FF5733; text-decoration: none; }
   </style>
 </head>
 <body>
-  <nav class="navbar navbar-expand navbar-dark bg-dark px-3">
-    <a class="navbar-brand fw-bold" href="index.html">⚡ BlazePredict</a>
+  <nav class="navbar navbar-expand navbar-dark px-4">
+    <a class="navbar-brand" href="index.html">⚡ BlazePredict</a>
     <div class="navbar-nav ms-auto">
-      <a class="nav-link" href="matches.html">Matches</a>
-      <a class="nav-link active" href="chat.html">Chat</a>
+      <a class="nav-link" href="matches.html">📊 Matches</a>
+      <a class="nav-link active" href="chat.html">💬 Chat</a>
     </div>
   </nav>
 
+  <div class="backdrop">
+    <h2>💬 Chat with Blaze</h2>
+    <p>Ask about predictions, teams, or anything football</p>
+  </div>
+
   <div class="chat-page">
     <div class="chat-card">
-      <div class="chat-header">
-        <h5>💬 BlazePredict Chat</h5>
-        <p>Ask about predictions, teams, or anything football</p>
+      <div class="chat-head">
+        <h5>🔥 Blaze AI</h5>
+        <p>Powered by OpenRouter AI</p>
       </div>
       <div id="chatBox" class="chat-box">
-        <div class="empty-chat" id="emptyState">Start a conversation about football!</div>
+        <div class="empty-chat" id="emptyState">
+          <div class="icon">⚽</div>
+          <p>Ask me about football predictions!</p>
+        </div>
       </div>
-      <div class="chat-footer">
-        <input type="text" id="chatInput" placeholder="Type a message..." onkeydown="if(event.key==='Enter')sendMsg()">
-        <button onclick="sendMsg()">➤</button>
+      <div class="chat-foot">
+        <input type="text" id="chatInput" placeholder="Ask about a match or team..." onkeydown="if(event.key==='Enter')sendMsg()">
+        <button id="sendBtn" onclick="sendMsg()">➤</button>
       </div>
     </div>
   </div>
 
   <footer>
-    <p>&copy; 2026 BlazePredict | All Rights Reserved</p>
-    <p><a href="index.html">Back to Home</a></p>
+    <p>&copy; 2026 BlazePredict — Built by <a href="https://github.com/Randyblazedev" target="_blank">RandyBlazedev</a></p>
   </footer>
 
   <script>
+    const AI_URL = 'https://keith-switching-meaning-calculate.trycloudflare.com/api/tutor';
+
     function addMsg(text, type) {
       const box = document.getElementById('chatBox');
       const empty = document.getElementById('emptyState');
       if (empty) empty.remove();
       const div = document.createElement('div');
-      div.className = 'chat-msg ' + type;
+      div.className = 'msg ' + type;
       div.textContent = text;
       box.appendChild(div);
       box.scrollTop = box.scrollHeight;
+      return div;
     }
 
-    function sendMsg() {
+    function removeTyping() {
+      const t = document.querySelector('.msg.typing');
+      if (t) t.remove();
+    }
+
+    async function sendMsg() {
       const input = document.getElementById('chatInput');
+      const btn = document.getElementById('sendBtn');
       const msg = input.value.trim();
       if (!msg) return;
-      addMsg(msg, 'sent');
-      input.value = '';
 
-      // Simulate response
-      setTimeout(() => {
-        const replies = [
-          "Interesting! Let me check the stats on that.",
-          "Good question! Based on recent form, I'd keep an eye on that match.",
-          "I'm analyzing the data now. The home team has a slight edge.",
-          "Great pick! That match has some solid prediction potential.",
-          "Hmm, tough call. Both teams are in good form lately."
-        ];
-        addMsg(replies[Math.floor(Math.random() * replies.length)], 'received');
-      }, 800 + Math.random() * 600);
+      addMsg(msg, 'user');
+      input.value = '';
+      btn.disabled = true;
+
+      const typingEl = addMsg('thinking...', 'typing');
+
+      try {
+        const res = await fetch(AI_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message: msg, username: 'BlazepredictUser' })
+        });
+        const data = await res.json();
+        removeTyping();
+        addMsg(data.reply || 'No response received.', 'bot');
+      } catch (e) {
+        removeTyping();
+        addMsg('AI is offline. Try again in a moment!', 'bot');
+      }
+
+      btn.disabled = false;
+      document.getElementById('chatInput').focus();
     }
   </script>
 </body>
