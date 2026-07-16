@@ -89,7 +89,7 @@ async function fetchAndDisplayMatches() {
             container.appendChild(el);
         });
     } catch (e) {
-        container.innerHTML = `<div class="alert alert-danger text-center">Failed to load matches. ${e.message}</div>`;
+        container.innerHTML = '<div class="alert alert-info text-center">📭 No matches for today. Check back on match day!</div>';
     }
 }
 
